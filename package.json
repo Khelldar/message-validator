@@ -1,7 +1,10 @@
 {
   "name": "message-validator",
   "version": "0.0.1",
-  "repository": "",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Khelldar/message-validator"
+  },
   "engines": {
     "node": ">=4.0.0"
   },
@@ -25,5 +28,11 @@
     "mocha-multi": "^0.7.1",
     "sinon": "^1.15.4",
     "sinon-chai": "^2.8.0"
-  }
+  },
+  "maintainers": [
+    {
+      "name": "Chris Langager",
+      "email": "christopher.langager@gmail.com"
+    }
+  ]
 }

@@ -1,0 +1,10 @@
+{
+  "source": "./src",
+  "destination": "./doc",
+  "unexportIdentifier" : true,
+  "undocumentIdentifier" : false,
+  "test": {
+    "type": "mocha",
+    "source": "./test"
+  }
+}

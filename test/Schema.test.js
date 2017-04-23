@@ -41,21 +41,21 @@ describe('Schema', () => {
       }).to.throw('second');
     });
 
-    it('should default to extraFields = false', () => {
+    it('should default to extraProperties = false', () => {
       schema = new Schema({});
-      expect(schema.options.extraFields).to.be.false;
+      expect(schema.options.extraProperties).to.be.false;
     });
 
     it('should build up a fields hash', () => {
-      schema = new Schema({ a: { type: 'string' } });
-      expect(schema.fields.a.type).to.equal('string');
+      schema = new Schema({ a: new Field({ type: 'string' }) });
+      expect(schema.properties.a.type).to.equal('string');
     });
 
   });
 
   describe('#validate', () => {
     let schema, message;
-    describe('extraFields', () => {
+    describe('extraProperties', () => {
       beforeEach(() => {
         message = {};
       });
@@ -63,9 +63,9 @@ describe('Schema', () => {
       it('should error if message is not an object', () => {
         expect(() => {
           schema = new Schema({
-            a: {
+            a: new Field({
               type: 'string'
-            }
+            })
           });
           schema.validate('dafsdas');
         }).to.throw('object');
@@ -73,9 +73,9 @@ describe('Schema', () => {
 
       it('should error if there are extra fields', () => {
         schema = new Schema({
-          a: {
+          a: new Field({
             type: 'string'
-          }
+          })
         });
         message.a = 'asdf';
         message.b = 'asdf';
@@ -88,10 +88,10 @@ describe('Schema', () => {
 
       it('should not error error if there are extra fields allowed', () => {
         schema = new Schema({
-          a: {
+          a: new Field({
             type: 'string'
-          }
-        }, { extraFields: true });
+          })
+        }, { extraProperties: true });
         message.a = 'asdf';
         message.b = 'asdf';
         expect(() => {
@@ -105,17 +105,17 @@ describe('Schema', () => {
       beforeEach(() => {
         message = {};
         schema = new Schema({
-          a: {
+          a: new Field({
             type: 'string',
-          },
-          b: {
+          }),
+          b: new Field({
             type: 'number',
-          },
-          c: {
+          }),
+          c: new Field({
             type: 'boolean',
-          },
-          d: {
-          },
+          }),
+          d: new Field({
+          }),
         });
       });
 
@@ -189,17 +189,17 @@ describe('Schema', () => {
       beforeEach(() => {
         message = {};
         schema = new Schema({
-          a: {
+          a: new Field({
             type: 'string',
             required: true,
-          },
-          b: {
+          }),
+          b: new Field({
             type: 'string',
             required: true,
-          },
-          c: {
+          }),
+          c: new Field({
             type: 'string',
-          },
+          }),
         });
       });
 
@@ -256,22 +256,22 @@ describe('Schema', () => {
       beforeEach(() => {
         message = {};
         schema = new Schema({
-          a: {
+          a: new Field({
             type: 'string',
             required: '1',
-          },
-          b: {
+          }),
+          b: new Field({
             type: 'string',
             required: '1',
-          },
-          c: {
+          }),
+          c: new Field({
             type: 'string',
             required: '2',
-          },
-          d: {
+          }),
+          d: new Field({
             type: 'string',
             required: '2',
-          }
+          })
         });
       });
 
@@ -318,12 +318,12 @@ describe('Schema', () => {
       beforeEach(() => {
         message = {};
         schema = new Schema({
-          a: {
+          a: new Field({
             type: 'string',
             validation: (val) => {
               return val.length <= 2;
             }
-          }
+          })
         });
       });
 
@@ -386,69 +386,99 @@ describe('Schema', () => {
       });
 
     });
-    //
-    // describe.skip('properties', () => {
-    //   let schema;
-    //
-    //   it('should error if any properties of a schema are not a Field or Schema', () => {
-    //     const e = _trapError(() => {
-    //       schema = new Schema({
-    //         something: '123',
-    //         somethingElse: [],
-    //       });
-    //     });
-    //     console.log(e);
-    //     expect(e).to.contain('something:');
-    //     expect(e).to.contain('somethingElse:');
-    //
-    //   });
-    // });
-    //
-    // describe.skip('schemas with schemas', () => {
-    //   let ticketSchema, personSchema, message;
-    //   beforeEach(() => {
-    //     message = {};
-    //   });
-    //
-    //   personSchema = new Schema({
-    //     name: new Field({type: 'string' }),
-    //     age: new Field({type: 'number'}),
-    //   });
-    //
-    //
-    //   ticketSchema = new Schema({
-    //     title: new Field({type: 'string'}),
-    //     owner: personSchema,
-    //   });
-    //
-    //   it('should error as normal with non-schema fields', () => {
-    //     message = {
-    //       title: [],
-    //       owner: {
-    //         name: 'Jon',
-    //         age: 22,
-    //       }
-    //     };
-    //
-    //     const e = _trapError(() => {
-    //       ticketSchema.validate(message);
-    //     });
-    //     expect(e.message).to.contain('title:');
-    //   });
-    //
-    //   it('should error if a netsted object is expected', () => {
-    //     message = {
-    //       title: 'This Sure is a Title',
-    //       owner: 'asdf',
-    //     };
-    //
-    //     const e = _trapError(() => {
-    //       ticketSchema.validate(message);
-    //     });
-    //     expect(e.message).to.contain('owner:');
-    //   });
-    //
-    // });
+
+    describe('properties', () => {
+      let schema;
+
+      it('should error if any properties of a schema are not a Field or Schema', () => {
+        expect(() => {
+          schema = new Schema({
+            something: '123',
+          });
+        }).to.throw('something');
+      });
+    });
+
+    describe('schemas with schemas', () => {
+      let ticketSchema, personSchema, message;
+      beforeEach(() => {
+        message = {};
+      });
+
+      personSchema = new Schema({
+        name: new Field({type: 'string' }),
+        age: new Field({
+          type: 'number',
+          rules: 'must be greater than or equal to 0',
+          validation: (val) => {
+            return val >= 0;
+          }
+        }),
+      });
+
+
+      ticketSchema = new Schema({
+        title: new Field({type: 'string'}),
+        owner: personSchema,
+      });
+
+      it('should error as normal with non-schema fields', () => {
+        message = {
+          title: [],
+          owner: {
+            name: 'Jon',
+            age: 22,
+          }
+        };
+
+        const e = _trapError(() => {
+          ticketSchema.validate(message);
+        });
+        expect(e.message).to.contain('title:');
+      });
+
+      it('should error if a netsted object is expected but something else is passed in', () => {
+        message = {
+          title: 'This Sure is a Title',
+          owner: 'asdf',
+        };
+
+        const e = _trapError(() => {
+          ticketSchema.validate(message);
+        });
+        expect(e.message).to.contain('owner:');
+      });
+
+      it('should error if there are bad properties on nested objects', () => {
+        message = {
+          title: 'This Sure is a Title',
+          owner: {
+            name: 123,
+            age: -100
+          },
+        };
+
+        const e = _trapError(() => {
+          ticketSchema.validate(message);
+        });
+        console.log(e.message);
+        expect(e.message).to.contain('name:');
+        expect(e.message).to.contain('age:');
+      });
+
+      //TODO: relationship between schema and field is bad right now, rework to make this sane
+      it.skip('should error if a netsted object required but not passed in', () => {
+        message = {
+          title: 'This Sure is a Title',
+        };
+
+        const e = _trapError(() => {
+          ticketSchema.validate(message);
+        });
+        expect(e.message).to.contain('owner:');
+      });
+
+    });
 
   });
 

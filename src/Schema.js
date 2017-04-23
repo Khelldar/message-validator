@@ -18,12 +18,25 @@ class Schema {
     this.options = {
       extraFields: false
     };
-
     _.assign(this.options, options || {});
-    this.fields = {};
+
+    const errors = [];
+    this.fields = {};//todo - rename to properties.  Field class stays, since that represents primatives.  'Property' can be a field or another schema
     _.each(fields, (fieldOptions, fieldName) => {
-      this.fields[fieldName] = new Field(fieldOptions);
+      console.log("fieldName: " +fieldName);
+      if (fieldOptions instanceof Field) {//if this is type Field
+        this.fields[fieldName] = new Field(fieldOptions);
+      } else if (fieldOptions instanceof Schema) { //if this is type of Schema
+        this.fields[fieldName] = new Schema(fieldOptions);
+      } else {
+        errors.push(`${fieldName}: must be a Schema or a Field`);
+      }
     });
+
+    if (errors.length > 0) {
+      throw new TypeError(`The following schema properties are not valid:\n ${this._prettyArrayString(errors)}`);
+    }
+
   }
 
   validate(message) {
@@ -61,7 +74,6 @@ class Schema {
     const errors = [];
     _.each(message, (v, k) => {
       if (this.fields[k] == null) {
-        console.log('extra field', k);
         errors.push(k);
       }
     });
@@ -71,17 +83,27 @@ class Schema {
   _fieldTypes(message) {
     const errors = [];
     _.each(message, (fieldValue, k) => {
+      console.log(k);
       const schemaField = this.fields[k];
-      if (schemaField != null && this._badType(schemaField.type, fieldValue)) {
+      if (schemaField != null && this._badType(schemaField, fieldValue)) {
         errors.push(`${k}: ${schemaField.toString(fieldValue)}`);
       }
     });
     return errors;
   }
 
-  _badType(type, value) {
+  _badType(schemaField, value, skipArrayCheck) {
+    const type = schemaField.type;
     if (value === null) { // nulls are ok for type checking.  represents deleting an optional field.
       return false;
+    }
+    else if (!skipArrayCheck && schemaField.array) {
+      // make sure we have an array
+      if (!_.isArray(value)) {
+        return true;
+      }
+      // go through each value and make sure the array contains the right types
+      return _.some(value, o => this._badType(schemaField, o, true));//not crazy about this flag
     }
     else if (type === 'number' && !_.isFinite(value)) {
       return true;
@@ -92,6 +114,8 @@ class Schema {
     else if (type === 'boolean' && !_.isBoolean(value)) {
       return true;
     }
+
+
     return false;
   }
 

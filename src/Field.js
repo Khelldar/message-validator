@@ -8,8 +8,12 @@ class Field {
         throw new TypeError('constructor parameter must be an object');
       }
 
-      if (options.type != null && !(options.type === 'string' || options.type === 'number'  || options.type === 'boolean') ) {
-        throw new TypeError('type is required must be a string equal to number, string, or boolean');
+      if (options.type != null && !(options.type === 'string' || options.type === 'number'  || options.type === 'boolean')) {
+        throw new TypeError('type is required must be a string equal to number, string, boolean, array, or schema');
+      }
+
+      if (options.array != null && !_.isBoolean(options.array)) {
+        throw new TypeError('array must be a boolean');
       }
 
       if (options.required != null && (!_.isBoolean(options.required) && !_.isString(options.required))) {

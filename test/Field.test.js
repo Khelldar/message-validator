@@ -25,7 +25,7 @@ describe('Field', () => {
       }).to.throw('string');
     });
 
-    it('should error if type is not one of the three allowed types', () => {
+    it('should error if type is not one of the five allowed types', () => {
       expect(() => {
         field = new Field({ type: 'boggle' });
       }).to.throw('string');
@@ -63,6 +63,12 @@ describe('Field', () => {
     it('extra field properties should not cause errors and be assigned', () => {
       field = new Field({ type: 'string', boggle: () => 'at the situation' });
       expect(field.boggle()).to.eql('at the situation');
+    });
+
+    it('should throw an error if array is aything other than a boolean', () => {
+      expect(() => {
+        field = new Field({ type: 'string', array: 'asdf' });
+      }).to.throw('array must be a boolean');
     });
 
   });

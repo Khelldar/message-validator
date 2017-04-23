@@ -5,6 +5,7 @@ const sinonChai = require('sinon-chai');
 const sinonStubPromise = require('sinon-promises');
 const chaiAsPromised = require('chai-as-promised');
 const Schema = require('./..').Schema;
+const Field = require('./..').Field;
 
 sinonStubPromise(sinon);
 chai.use(chaiAsPromised);
@@ -43,11 +44,6 @@ describe('Schema', () => {
     it('should default to extraFields = false', () => {
       schema = new Schema({});
       expect(schema.options.extraFields).to.be.false;
-    });
-
-
-    it('should call the Field constructor', () => {
-      // TODO
     });
 
     it('should build up a fields hash', () => {
@@ -348,9 +344,111 @@ describe('Schema', () => {
 
     });
 
-    describe('real world', () => {
+    describe('schemas with arrays', () => {
+      let schema, message;
+      beforeEach(() => {
+        message = {};
+      });
+
+      schema = new Schema({
+        list: new Field({ type: 'string', array: true })
+      });
+
+      it('should error if schema wants an array, but the message has some other type', () => {
+        message.list = 'asdf';
+        const e = _trapError(() => {
+          schema.validate(message);
+        });
+        expect(e.message).to.contain('list:');
+      });
+
+      it('should error if the schema wants an array of strings, but the message has an array of numbers', () => {
+        message.list = [1, 2, 3];
+        const e = _trapError(() => {
+          schema.validate(message);
+        });
+        expect(e.message).to.contain('list:');
+      });
+
+      it('should error if the array on the message has mixed types', () => {
+        message.list = ['one', 'two', 3];
+        const e = _trapError(() => {
+          schema.validate(message);
+        });
+        expect(e.message).to.contain('list:');
+      });
+
+      it('empty arrays should not cause an error', () => {
+        message.list = [];
+        expect(() => {
+          schema.validate(message);
+        }).to.not.throw();
+      });
 
     });
+    //
+    // describe.skip('properties', () => {
+    //   let schema;
+    //
+    //   it('should error if any properties of a schema are not a Field or Schema', () => {
+    //     const e = _trapError(() => {
+    //       schema = new Schema({
+    //         something: '123',
+    //         somethingElse: [],
+    //       });
+    //     });
+    //     console.log(e);
+    //     expect(e).to.contain('something:');
+    //     expect(e).to.contain('somethingElse:');
+    //
+    //   });
+    // });
+    //
+    // describe.skip('schemas with schemas', () => {
+    //   let ticketSchema, personSchema, message;
+    //   beforeEach(() => {
+    //     message = {};
+    //   });
+    //
+    //   personSchema = new Schema({
+    //     name: new Field({type: 'string' }),
+    //     age: new Field({type: 'number'}),
+    //   });
+    //
+    //
+    //   ticketSchema = new Schema({
+    //     title: new Field({type: 'string'}),
+    //     owner: personSchema,
+    //   });
+    //
+    //   it('should error as normal with non-schema fields', () => {
+    //     message = {
+    //       title: [],
+    //       owner: {
+    //         name: 'Jon',
+    //         age: 22,
+    //       }
+    //     };
+    //
+    //     const e = _trapError(() => {
+    //       ticketSchema.validate(message);
+    //     });
+    //     expect(e.message).to.contain('title:');
+    //   });
+    //
+    //   it('should error if a netsted object is expected', () => {
+    //     message = {
+    //       title: 'This Sure is a Title',
+    //       owner: 'asdf',
+    //     };
+    //
+    //     const e = _trapError(() => {
+    //       ticketSchema.validate(message);
+    //     });
+    //     expect(e.message).to.contain('owner:');
+    //   });
+    //
+    // });
 
   });
 

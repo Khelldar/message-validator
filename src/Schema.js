@@ -1,220 +1,164 @@
-'use strict';
-const _ = require('lodash');
-const Field = require('./Field');
-
+var _ = require('lodash')
 
 
 class Schema {
-  constructor(properties, options) {
-    if (!_.isObject(properties)) {
-      throw new TypeError('first param: properties must be an object');
-    }
-
-    if (options != null && !_.isObject(options)) {
-      throw new TypeError('second param: options must be an object');
-    }
-
-    // default options
-    this.options = {
-      extraProperties: false,
-      required: false,
-      array: false
-    };
-    _.assign(this.options, options || {});
-
-
-
-    const errors = [];
-    this.properties = {};
-    _.each(properties, (property, propertyName) => {
-      if (!(property instanceof Field || property instanceof Schema)) {
-        errors.push(`${propertyName}: must be a Schema or a Field`);
-        return;
-      }
-
-      this.properties[propertyName] = property;
-
-    });
-
-    if (errors.length > 0) {
-      throw new TypeError(`The following schema properties are not valid:\n ${this._prettyArrayString(errors)}`);
-    }
-
-  }
-
-  validate(message, options) {
-    if (!_.isObject(message)) {
-      throw new TypeError('message must be an object');
-    }
-
-    if (options != null && !_.isObject(options)) {
-      throw new TypeError('options must be an object');
-    }
-    // default options
-    options = {
-      throwError: true
-    };
-    _.assign(this.options, options || {});
-
-    // rolling collection of errors
-    let errors = [];
-
-    _.each(this.properties, (property, propertyName) => {
-      if (property instanceof Schema && _.isObject(message[propertyName])) {
-        errors = _.union(errors, property.validate(message[propertyName], { throwError: false }));
-      }
-    });
-
-    // check for extra fields
-    if (!this.options.extraProperties) {
-      errors = _.union(errors, this._noExtra(message));
-    }
-
-    // check for wrong types
-    errors = _.union(errors, this._fieldTypes(message));
-
-    // check for required fields
-    errors = _.union(errors, this._requiredFields(message));
-
-    // custom validation
-    errors = _.union(errors, this._customValidation(message));
-
-    // format and throw the error
-    if (errors.length > 0 && options.throwError) {
-      const error = new Error(`The following rules are not met; ${this._prettyArrayString(errors)}`);
-      error.name = 'BadRequest';
-      error.statusCode = 400;
-      throw error;
-    }
-
-    return errors;
-  }
-
-  toString(val) {
-    let s = '';
-
-    if (this.required) {
-      s += '(required) ';
-    }
-
-
-    s += `must be an object`;
-
-
-    return _.trim(s);
-  }
-
-  _noExtra(message) {
-    const errors = [];
-    _.each(message, (v, k) => {
-      if (this.properties[k] == null) {
-        errors.push(k);
-      }
-    });
-    return errors.length > 0 ? [`extra fields are not allowed: ${errors}`] : [];
-  }
-
-  _fieldTypes(message) {
-    const errors = [];
-    _.each(message, (fieldValue, k) => {
-      const schemaField = this.properties[k];
-      if (schemaField != null && this._badType(schemaField, fieldValue)) {
-        errors.push(`${k}: ${schemaField.toString(fieldValue)}`);
-      }
-    });
-    return errors;
-  }
-
-  _badType(schemaField, value, skipArrayCheck) {
-    const type = schemaField.type;
-    if (value === null) { // nulls are ok for type checking.  represents deleting an optional field.
-      return false;
-    }
-    else if (schemaField instanceof Schema) {
-      if (!_.isObject(value)) {
-        return true;
-      }
-    }
-    else if (!skipArrayCheck && schemaField.array) {
-      // make sure we have an array
-      if (!_.isArray(value)) {
-        return true;
-      }
-      // go through each value and make sure the array contains the right types
-      // not crazy about this flag, but it lets us get recursive with having 'array' as a boolean property on Field
-      return _.some(value, o => this._badType(schemaField, o, true));
-    }
-    else if (type === 'number' && !_.isFinite(value)) {
-      return true;
-    }
-    else if (type === 'string' && !_.isString(value)) {
-      return true;
-    }
-    else if (type === 'boolean' && !_.isBoolean(value)) {
-      return true;
-    }
-
-
-    return false;
-  }
-
-  _requiredFields(message) {
-    const errors = [];
-    let groupsNotMet = [];
-    const groupsMet = [];
-    _.each(this.properties, (fieldProperties, fieldName) => {
-      console.log(`performing requird check on ${fieldName}`)
-      console.log(`fieldProperties.required: ${fieldProperties.required}`)
-      if (fieldProperties.required === true && message[fieldName] == null) {
-        errors.push(`${fieldName}: ${fieldProperties.toString()}`);
-      }
-
-      if (_.isString(fieldProperties.required)) {
-        if (message[fieldName] == null) {
-          groupsNotMet.push(fieldProperties.required);
+    constructor(options) {
+        if (!_.isObject(options)) {
+            throw new TypeError('schema constructor parameter must be an object');
         }
-        else {
-          groupsMet.push(fieldProperties.required);
+
+        if (options.throw != null && !_.isBoolean(options.throw)) {
+            throw new TypeError('throw must be a boolean');
         }
-      }
 
-    });
+        if (options.allowExtraProperties != null && !_.isBoolean(options.allowExtraProperties)) {
+            throw new TypeError('allowExtraProperties must be a boolean');
+        }
 
-    groupsNotMet = _.uniq(groupsNotMet);
-    _.each(groupsNotMet, (group) => {
-      if (!_.contains(groupsMet, group)) {
-        const groupFields = [];
-        _.each(this.properties, (v, k) => {
-          if (v.required === group) {
-            groupFields.push(`${k}: ${v.toString()}`);
-          }
+        if (options.type != null && !_.isString(options.type)) {
+            throw new TypeError('type must be a string');
+        }
+
+        if (options.type != null && !_.isString(options.type)) {
+            throw new TypeError('type must be a string');
+        }
+
+        if (options.array != null && !_.isBoolean(options.array)) {
+            throw new TypeError('array must be a boolean');
+        }
+
+        if (options.required != null && !_.isBoolean(options.required)) {
+            throw new TypeError('required must be a boolean');
+        }
+
+        if (options.properties != null && !_.isObject(options.properties)) {
+            throw new TypeError('properties must be an object');
+        }
+
+        if (options.validation != null && !_.isFunction(options.validation)) {
+            throw new TypeError('validation must be an must be a function that takes a value and return a boolean');
+        }
+
+        if ((options.type !== 'string' || options.type !== 'number' || options.type !== 'boolean') && this.properties != null) {
+            throw new TypeError("cannot set properties on a primative");
+        }
+
+        if ((options.type !== 'string' || options.type !== 'number' || options.type !== 'boolean') && this.allowExtraProperties != null) {
+            throw new TypeError("cannot set allowExtraProperties on a primative");
+        }
+
+
+
+
+        this._options = options;
+    }
+
+    required() {
+        let clone = new Schema(this._options);
+        clone._options.required = true;
+        return clone;
+    }
+
+    array() {
+        let clone = new Schema(this._options);
+        clone._array.required = true;
+        return clone;
+    }
+
+    validate(val) {
+        var errors = [];
+        var { array } = this._options;
+
+        //required check - this is done up here because it doesn't matter whether something is an array or not
+        if (val == null) {
+            return [`this is a required field`];
+        }
+
+        //the goal here is to stop dealing with arrays as soon as possible.
+        //these conditionals are kind of gross, but the helpers end up looking way better
+        var errors = [];
+        if (array) { //working with an array
+            if (!_.isArray(val)) {
+                return [`${val} is not an array`];
+            }
+            //iterate over each elem in the array and run all validation
+            _.each(val, (elem) => {
+                errors = _.union(errors, this._validateSingleValue(elem));
+            });
+        } else { //working with a single value
+            errors = _.union(errors, this._validateSingleValue(val));
+        }
+
+        return errors;
+    }
+
+    _validateSingleValue(val) {
+        var errors = [];
+        var { properties } = this._options
+
+        //type check
+        errors = _.union(errors, this._typeCheck(val));
+
+        //properties
+        errors = _.union(errors, this._propertiesCheck(val));
+
+        //custom validation
+        errors = _.union(errors, this._customValidationCheck(val));
+
+        return errors;
+    }
+
+    _typeCheck(val) {
+        var { type } = this._options;
+        if (!isType(type, val)) {
+            return [`${val} is not a valid ${type}`];
+        }
+    }
+
+    _propertiesCheck(val) {
+        var errors = [];
+        var { properties } = this._options
+        if (properties == null) {
+            return errors;
+        }
+
+        _.each(properties, (property, propertyName) => {
+            errors = _.union(errors, property.validate(val[propertyName]));
         });
-        errors.push(`One of the following fields is required: ${this._prettyArrayString(groupFields)}`);
-      }
-    });
 
-    return errors;
-  }
+        return errors;
+    }
 
-  _customValidation(message) {
-    const errors = [];
-    _.each(message, (fieldValue, k) => {
-      const schemaField = this.properties[k];
-      if (schemaField != null && schemaField.validation != null && !schemaField.validation(fieldValue)) {
-        errors.push(`${k}: ${schemaField.toString(fieldValue)}`);
-      }
-    });
-    return errors;
-  }
+    _customValidationCheck(val) {
+        var errors = [];
+        var { validation } = this._options;
+        if (validation == null) {
+            return errors;
+        }
 
-  _prettyArrayString(array) {
-    let s = '';
-    _.each(array, (error) => {
-      s += `${error}, `;
-    });
-    return _.trim(s, ', ');
-  }
+        if (!validation(val)) {
+            errors.push('something')
+        }
+
+        return errors;
+    }
 
 }
 
-module.exports = Schema;
+function isType(type, val) {
+    switch (type) {
+        case 'string':
+            return _.isString(val);
+        case 'number':
+            return _.isNumber(val);
+        case 'boolean':
+            return _.isBoolean(val);
+        default:
+            return _.isObject(val);
+    }
+}
+
+
+
+
+module.exports = Schema
